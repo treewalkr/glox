@@ -20,4 +20,5 @@ const (
 	Swap                   // ( a b -- b a ) exchange the top two values
 	Over                   // ( a b -- a b a ) copy the second value to the top
 	Rot                    // ( a b c -- b c a ) rotate the third value to the top
+	Print                  // ( a -- ) print the top value and a newline
 )

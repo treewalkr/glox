@@ -2,6 +2,8 @@ package vm
 
 import (
 	"fmt"
+	"io"
+	"os"
 
 	"glox/internal/bytecode"
 	"glox/internal/errors"
@@ -15,10 +17,16 @@ type Vm struct {
 	chunk bytecode.Chunk
 	stack []value.Value
 	pc    int
+	out   io.Writer // where Print writes; nil means os.Stdout
 }
 
 func New(chunk bytecode.Chunk) *Vm {
-	return &Vm{chunk: chunk}
+	return &Vm{chunk: chunk, out: os.Stdout}
+}
+
+// SetOutput redirects Print output (tests and embedding hosts use this).
+func (v *Vm) SetOutput(w io.Writer) {
+	v.out = w
 }
 
 // Run executes the fetch-decode-execute loop until Halt or error.
@@ -132,6 +140,13 @@ func (v *Vm) Run() error {
 			v.push(c)
 			v.push(a)
 
+		case opcode.Print: // ( a -- ) print the top value and a newline
+			a, err := v.pop()
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(v.output(), a)
+
 		default:
 			return fmt.Errorf("%w: 0x%02x at pc %d", errors.ErrUnknownOpcode, byte(op), v.pc-1)
 		}
@@ -213,4 +228,12 @@ func (v *Vm) peek(depth int) (value.Value, error) {
 		return 0, errors.ErrStackUnderflow
 	}
 	return v.stack[len(v.stack)-1-depth], nil
+}
+
+// output returns the Print destination, defaulting to stdout.
+func (v *Vm) output() io.Writer {
+	if v.out == nil {
+		return os.Stdout
+	}
+	return v.out
 }

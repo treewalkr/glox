@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"bytes"
 	"errors"
 	"slices"
 	"testing"
@@ -232,6 +233,57 @@ func TestStackOpUnderflow(t *testing.T) {
 			machine := New(bytecode.Chunk{Code: code, Constants: tt.stack})
 			if err := machine.Run(); !errors.Is(err, vmerrors.ErrStackUnderflow) {
 				t.Fatalf("Run() error = %v, want ErrStackUnderflow", err)
+			}
+		})
+	}
+}
+
+// TestPrint checks output text and that Print pops each value it prints.
+func TestPrint(t *testing.T) {
+	tests := []struct {
+		name      string
+		constants []value.Value
+		code      []byte
+		want      string
+	}{
+		{
+			name:      "single value",
+			constants: []value.Value{42},
+			code:      prog(constant(0), op(opcode.Print), op(opcode.Halt)),
+			want:      "42\n",
+		},
+		{
+			name:      "negative value",
+			constants: []value.Value{-7},
+			code:      prog(constant(0), op(opcode.Print), op(opcode.Halt)),
+			want:      "-7\n",
+		},
+		{
+			name:      "sequence pops each value",
+			constants: []value.Value{1, 2, 3},
+			code: prog(
+				constant(0), op(opcode.Print),
+				constant(1), op(opcode.Print),
+				constant(2), op(opcode.Print),
+				op(opcode.Halt),
+			),
+			want: "1\n2\n3\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			machine := New(bytecode.Chunk{Code: tt.code, Constants: tt.constants})
+			machine.SetOutput(&buf)
+			if err := machine.Run(); err != nil {
+				t.Fatalf("Run() error = %v", err)
+			}
+			if got := buf.String(); got != tt.want {
+				t.Errorf("output = %q, want %q", got, tt.want)
+			}
+			if stack := machine.Stack(); len(stack) != 0 {
+				t.Errorf("stack after prints = %v, want empty", stack)
 			}
 		})
 	}
