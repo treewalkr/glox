@@ -81,6 +81,57 @@ func (v *Vm) Run() error {
 			}
 			v.push(-a)
 
+		// Stack shuffles: the classic Forth words for rearranging the
+		// stack without computing anything.
+
+		case opcode.Pop: // ( a -- ) discard the top value
+			if _, err := v.pop(); err != nil {
+				return err
+			}
+
+		case opcode.Dup: // ( a -- a a ) copy the top value
+			a, err := v.peek(0)
+			if err != nil {
+				return err
+			}
+			v.push(a)
+
+		case opcode.Swap: // ( a b -- b a ) exchange the top two
+			b, err := v.pop()
+			if err != nil {
+				return err
+			}
+			a, err := v.pop()
+			if err != nil {
+				return err
+			}
+			v.push(b)
+			v.push(a)
+
+		case opcode.Over: // ( a b -- a b a ) copy the second to the top
+			a, err := v.peek(1)
+			if err != nil {
+				return err
+			}
+			v.push(a)
+
+		case opcode.Rot: // ( a b c -- b c a ) rotate the third to the top
+			c, err := v.pop()
+			if err != nil {
+				return err
+			}
+			b, err := v.pop()
+			if err != nil {
+				return err
+			}
+			a, err := v.pop()
+			if err != nil {
+				return err
+			}
+			v.push(b)
+			v.push(c)
+			v.push(a)
+
 		default:
 			return fmt.Errorf("%w: 0x%02x at pc %d", errors.ErrUnknownOpcode, byte(op), v.pc-1)
 		}
@@ -153,4 +204,13 @@ func (v *Vm) pop() (value.Value, error) {
 	top := v.stack[len(v.stack)-1]
 	v.stack = v.stack[:len(v.stack)-1]
 	return top, nil
+}
+
+// peek returns the value depth slots below the top of the stack
+// (peek(0) is the top) without popping it.
+func (v *Vm) peek(depth int) (value.Value, error) {
+	if len(v.stack) <= depth {
+		return 0, errors.ErrStackUnderflow
+	}
+	return v.stack[len(v.stack)-1-depth], nil
 }

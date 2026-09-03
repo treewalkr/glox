@@ -172,6 +172,71 @@ func TestPhase2DefinitionOfDone(t *testing.T) {
 	assertStack(t, machine.Stack(), []value.Value{26})
 }
 
+// TestStackOps covers every Phase 2 stack-shuffle opcode; push lists the
+// stack before the op (bottom-first), want the stack after it.
+func TestStackOps(t *testing.T) {
+	tests := []struct {
+		name string
+		push []value.Value // pushed bottom-first before the op runs
+		op   opcode.Opcode
+		want []value.Value // expected stack after the op (bottom-first)
+	}{
+		{"pop drops the top", []value.Value{7, 8}, opcode.Pop, []value.Value{7}},
+		{"dup copies the top", []value.Value{5}, opcode.Dup, []value.Value{5, 5}},
+		{"swap exchanges two", []value.Value{3, 4}, opcode.Swap, []value.Value{4, 3}},
+		{"over copies the second", []value.Value{3, 4}, opcode.Over, []value.Value{3, 4, 3}},
+		{"rot rotates three", []value.Value{1, 2, 3}, opcode.Rot, []value.Value{2, 3, 1}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var code []byte
+			for i := range tt.push {
+				code = append(code, constant(uint16(i))...)
+			}
+			code = append(code, op(tt.op)...)
+			code = append(code, op(opcode.Halt)...)
+			machine := New(bytecode.Chunk{Code: code, Constants: tt.push})
+			if err := machine.Run(); err != nil {
+				t.Fatalf("Run() error = %v", err)
+			}
+			assertStack(t, machine.Stack(), tt.want)
+		})
+	}
+}
+
+// TestStackOpUnderflow checks each shuffle fails cleanly when the stack is
+// one value short of what it needs.
+func TestStackOpUnderflow(t *testing.T) {
+	tests := []struct {
+		name  string
+		op    opcode.Opcode
+		stack []value.Value // fewer values than the op needs
+	}{
+		{"pop on empty", opcode.Pop, nil},
+		{"dup on empty", opcode.Dup, nil},
+		{"swap on one", opcode.Swap, []value.Value{1}},
+		{"over on one", opcode.Over, []value.Value{1}},
+		{"rot on two", opcode.Rot, []value.Value{1, 2}},
+		{"neg on empty", opcode.Neg, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var code []byte
+			for i := range tt.stack {
+				code = append(code, constant(uint16(i))...)
+			}
+			code = append(code, op(tt.op)...)
+			code = append(code, op(opcode.Halt)...)
+			machine := New(bytecode.Chunk{Code: code, Constants: tt.stack})
+			if err := machine.Run(); !errors.Is(err, vmerrors.ErrStackUnderflow) {
+				t.Fatalf("Run() error = %v, want ErrStackUnderflow", err)
+			}
+		})
+	}
+}
+
 func TestStackUnderflow(t *testing.T) {
 	machine := New(bytecode.Chunk{Code: prog(op(opcode.Add), op(opcode.Halt))})
 	if err := machine.Run(); !errors.Is(err, vmerrors.ErrStackUnderflow) {

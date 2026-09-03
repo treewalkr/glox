@@ -15,4 +15,9 @@ const (
 	Div                    // ( a b -- a/b ) integer division, truncates toward zero
 	Mod                    // ( a b -- a%b ) remainder, sign follows the dividend
 	Neg                    // ( a -- -a )
+	Pop                    // ( a -- ) discard the top value
+	Dup                    // ( a -- a a ) copy the top value
+	Swap                   // ( a b -- b a ) exchange the top two values
+	Over                   // ( a b -- a b a ) copy the second value to the top
+	Rot                    // ( a b c -- b c a ) rotate the third value to the top
 )
