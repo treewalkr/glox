@@ -289,6 +289,25 @@ func TestPrint(t *testing.T) {
 	}
 }
 
+// TestStackOverflow pushes one more constant than the depth limit allows;
+// the (maxStack+1)th push must fail with ErrStackOverflow, leaving exactly
+// maxStack values on the stack.
+func TestStackOverflow(t *testing.T) {
+	code := make([]byte, 0, (maxStack+1)*3+1)
+	for i := 0; i <= maxStack; i++ {
+		code = append(code, constant(0)...)
+	}
+	code = append(code, op(opcode.Halt)...)
+
+	machine := New(bytecode.Chunk{Code: code, Constants: []value.Value{1}})
+	if err := machine.Run(); !errors.Is(err, vmerrors.ErrStackOverflow) {
+		t.Fatalf("Run() error = %v, want ErrStackOverflow", err)
+	}
+	if got := len(machine.Stack()); got != maxStack {
+		t.Errorf("stack depth = %d, want %d", got, maxStack)
+	}
+}
+
 func TestStackUnderflow(t *testing.T) {
 	machine := New(bytecode.Chunk{Code: prog(op(opcode.Add), op(opcode.Halt))})
 	if err := machine.Run(); !errors.Is(err, vmerrors.ErrStackUnderflow) {

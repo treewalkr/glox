@@ -11,6 +11,10 @@ import (
 	"glox/internal/value"
 )
 
+// maxStack is the value-stack depth limit from docs/vm.md §4. Pushing
+// past it returns ErrStackOverflow rather than growing without bound.
+const maxStack = 1024
+
 // Vm is the stack machine interpreter. pc is the program counter: an index
 // into chunk.Code pointing at the next instruction byte to fetch.
 type Vm struct {
@@ -51,7 +55,9 @@ func (v *Vm) Run() error {
 			if int(idx) >= len(v.chunk.Constants) {
 				return errors.ErrConstantIndex
 			}
-			v.push(v.chunk.Constants[idx])
+			if err := v.push(v.chunk.Constants[idx]); err != nil {
+				return err
+			}
 
 		// Arithmetic: binary instructions pop b (the top of the stack)
 		// first, then a (the deeper value). In the effect ( a b -- a-b )
@@ -87,7 +93,9 @@ func (v *Vm) Run() error {
 			if err != nil {
 				return err
 			}
-			v.push(-a)
+			if err := v.push(-a); err != nil {
+				return err
+			}
 
 		// Stack shuffles: the classic Forth words for rearranging the
 		// stack without computing anything.
@@ -102,7 +110,9 @@ func (v *Vm) Run() error {
 			if err != nil {
 				return err
 			}
-			v.push(a)
+			if err := v.push(a); err != nil {
+				return err
+			}
 
 		case opcode.Swap: // ( a b -- b a ) exchange the top two
 			b, err := v.pop()
@@ -113,15 +123,21 @@ func (v *Vm) Run() error {
 			if err != nil {
 				return err
 			}
-			v.push(b)
-			v.push(a)
+			if err := v.push(b); err != nil {
+				return err
+			}
+			if err := v.push(a); err != nil {
+				return err
+			}
 
 		case opcode.Over: // ( a b -- a b a ) copy the second to the top
 			a, err := v.peek(1)
 			if err != nil {
 				return err
 			}
-			v.push(a)
+			if err := v.push(a); err != nil {
+				return err
+			}
 
 		case opcode.Rot: // ( a b c -- b c a ) rotate the third to the top
 			c, err := v.pop()
@@ -136,9 +152,15 @@ func (v *Vm) Run() error {
 			if err != nil {
 				return err
 			}
-			v.push(b)
-			v.push(c)
-			v.push(a)
+			if err := v.push(b); err != nil {
+				return err
+			}
+			if err := v.push(c); err != nil {
+				return err
+			}
+			if err := v.push(a); err != nil {
+				return err
+			}
 
 		case opcode.Print: // ( a -- ) print the top value and a newline
 			a, err := v.pop()
@@ -176,8 +198,7 @@ func (v *Vm) binaryOp(f func(a, b value.Value) (value.Value, error)) error {
 	if err != nil {
 		return err
 	}
-	v.push(result)
-	return nil
+	return v.push(result)
 }
 
 // Arithmetic kernels. Each takes (a, b) where a is the deeper stack value
@@ -208,8 +229,13 @@ func mod(a, b value.Value) (value.Value, error) {
 	return a % b, nil
 }
 
-func (v *Vm) push(val value.Value) {
+// push pushes val onto the stack, refusing to exceed the depth limit.
+func (v *Vm) push(val value.Value) error {
+	if len(v.stack) >= maxStack {
+		return errors.ErrStackOverflow
+	}
 	v.stack = append(v.stack, val)
+	return nil
 }
 
 func (v *Vm) pop() (value.Value, error) {
