@@ -72,10 +72,10 @@ Unit test asserts the stack top is `7` after `Run()`.
 
 **Goal:** full integer arithmetic plus the classic Forth stack ops.
 
-- [ ] Arithmetic: `Sub`, `Mul`, `Div`, `Mod`, `Neg`.
-- [ ] Division-by-zero returns a sentinel error (no panic).
-- [ ] Stack ops: `Pop`, `Dup`, `Swap`, `Over`, `Rot` (optional).
-- [ ] Add a `Print` opcode that pops and prints.
+- [x] Arithmetic: `Sub`, `Mul`, `Div`, `Mod`, `Neg`.
+- [x] Division-by-zero returns a sentinel error (no panic).
+- [x] Stack ops: `Pop`, `Dup`, `Swap`, `Over`, `Rot` (optional).
+- [x] Add a `Print` opcode that pops and prints.
 
 **Definition of Done:** a test computes `(10 - 2) * 3 + 4 / 2` and asserts `26`.
 

@@ -59,13 +59,13 @@ Supporting context lives outside `docs/`:
 
 ## Implementation status
 
-Current state (Phase 0–1 complete, everything else planned):
+Current state (Phase 0–2 complete, everything else planned):
 
 | Phase | Milestone                                   | Status   |
 |-------|---------------------------------------------|----------|
 | 0     | Foundation: opcode/value/chunk/errors types | done     |
 | 1     | Minimal VM: `Constant`, `Add`, `Halt`       | done     |
-| 2     | Arithmetic & stack manipulation             | planned  |
+| 2     | Arithmetic & stack manipulation             | done     |
 | 3     | Control flow (Turing complete)              | planned  |
 | 4     | Global variables                            | planned  |
 | 5     | Functions & call stack                      | planned  |
